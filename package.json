@@ -1,0 +1,17 @@
+{
+  "name": "guiltbot",
+  "version": "1.0.0",
+  "description": "Discord bot filled with GUILT",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "asyncawait": "^1.0.8",
+    "discord.js": "^11.5.1",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.4"
+  },
+  "author": "Thurler",
+  "license": "GPL-3.0"
+}

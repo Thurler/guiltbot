@@ -10,6 +10,24 @@ const client = new Discord.Client();
 const pollStreamInterval = 5*60*1000;    // Poll streams every 5 minutes
 const renewStreamInterval = 60*60*1000;  // Update if >1 hour between streams
 
+let twitchApiToken = null;
+
+logSomething = function(text) {
+  console.log(new Date().toISOString() + ' | ' + text);
+};
+
+updateToken = async(function() {
+  let url = 'https://id.twitch.tv/oauth2/token?';
+  url += 'client_id='+config.twitch.clientId+'&';
+  url += 'client_secret='+config.twitch.clientSecret+'&';
+  url += 'grant_type=client_credentials';
+  let body = await(request.post({url: url}));
+  body = JSON.parse(body);
+  if (body.hasOwnProperty('access_token')) {
+    twitchApiToken = body.access_token;
+  }
+});
+
 getGameNameFromId = function(id) {
   return config.twitch.games.find((g)=>g.id===id).name;
 };
@@ -87,7 +105,10 @@ buildStreamsReply = async(function(streams) {
 
 getRelevantStreams = async(function(force) {
   let url = 'https://api.twitch.tv/helix/streams';
-  let header = { 'Client-ID': config.twitch.clientId };
+  let header = {
+    'Client-ID': config.twitch.clientId,
+    'Authorization': 'Bearer ' + twitchApiToken,
+  };
   let params = { 'game_id': [] };
   config.twitch.games.forEach((game)=>{ params.game_id.push(game.id); });
   try {
@@ -108,13 +129,18 @@ getRelevantStreams = async(function(force) {
     });
     return streams;
   } catch (err) {
+    if (!twitchApiToken && err['name'] === 'StatusCodeError' && err['statusCode'] === 401) {
+      logSomething('Getting a new token...');
+      await(updateToken());
+      return getRelevantStreams(force);
+    }
     console.log(err);
     return null;
   }
 });
 
 checkStreams = async(function() {
-  console.log('Looking for new streams... | ' + new Date().toISOString());
+  logSomething('Looking for new streams...');
   let channel = client.channels.array().find((c)=>c.id == config.channel);
   let streams = await(getRelevantStreams(false));
   if (!streams || streams.length === 0) {
@@ -145,7 +171,7 @@ client.on('message', async((message)=>{
 
   if (command === 'live') {
     // Display live streams
-    console.log('Live command received... | ' + new Date().toISOString());
+    logSomething('Live command received...');
     let streams = await(getRelevantStreams(true));
     if (streams === null) {
       return message.channel.send('Error finding streams');

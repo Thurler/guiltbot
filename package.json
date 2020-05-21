@@ -1,8 +1,11 @@
 {
   "name": "guiltbot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Discord bot filled with GUILT",
   "main": "app.js",
+  "engine": {
+    "node": "8.16.x"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

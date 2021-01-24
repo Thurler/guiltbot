@@ -183,8 +183,9 @@ client.on('message', async((message)=>{
     let streams = result.streams;
     if (streams === null) {
       return message.channel.send('Twitch did not give tags information, please try again soon');
-    } else if (streams.length === 0 && result.missingTags) {
-      return message.channel.send('Error finding streams @Thurler#7065');
+    }
+    else if (streams.length === 0 && result.missingTags) {
+      return message.channel.send('Error finding streams');
     }
     else if (streams.length === 0) {
       return message.channel.send('No relevant streams found');

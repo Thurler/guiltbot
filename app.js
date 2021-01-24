@@ -7,7 +7,7 @@ const config = require('./config.json');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
-const pollStreamInterval = 3*60*1000;    // Poll streams every 3 minutes
+const pollStreamInterval = 2*60*1000;    // Poll streams every 2 minutes
 const renewStreamInterval = 60*60*1000;  // Update if >1 hour between streams
 
 let twitchApiToken = null;
@@ -118,7 +118,13 @@ getRelevantStreams = async(function(force) {
       qs: params,
     }));
     body = JSON.parse(body);
+    let missingTags = false;
     let streams = body.data.filter((stream)=>{
+      // Filter streams without tags
+      if (!stream.tag_ids) {
+        missingTags = true;
+        return false;
+      }
       // Filter non-speedrun streams
       if (!stream.tag_ids.includes(config.twitch.tagId)) return false;
       // Filter non-trauma streams
@@ -127,7 +133,7 @@ getRelevantStreams = async(function(force) {
       if (force) return true;
       return checkIsNewStream(stream.id, stream.user_id);
     });
-    return streams;
+    return {streams: streams, missingTags: missingTags};
   } catch (err) {
     if (!twitchApiToken && err['name'] === 'StatusCodeError' && err['statusCode'] === 401) {
       logSomething('Getting a new token...');
@@ -135,14 +141,15 @@ getRelevantStreams = async(function(force) {
       return getRelevantStreams(force);
     }
     console.log(err);
-    return null;
+    return {streams: null, missingTags: false};
   }
 });
 
 checkStreams = async(function() {
   logSomething('Looking for new streams...');
   let channel = client.channels.array().find((c)=>c.id == config.channel);
-  let streams = await(getRelevantStreams(false));
+  let result = await(getRelevantStreams(false));
+  let streams = result.streams;
   if (!streams || streams.length === 0) {
     console.log('No streams found.');
     return;
@@ -172,9 +179,12 @@ client.on('message', async((message)=>{
   if (command === 'live') {
     // Display live streams
     logSomething('Live command received...');
-    let streams = await(getRelevantStreams(true));
-    if (streams === null) {
-      return message.channel.send('Error finding streams');
+    let result = await(getRelevantStreams(true));
+    let streams = results.streams;
+    if (streams === null && result.missingTags) {
+      return message.channel.send('Twitch did not give tags information, please try again soon');
+    } else if (streams === null) {
+      return message.channel.send('Error finding streams @Thurler#7065');
     }
     else if (streams.length === 0) {
       return message.channel.send('No relevant streams found');

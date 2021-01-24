@@ -180,10 +180,10 @@ client.on('message', async((message)=>{
     // Display live streams
     logSomething('Live command received...');
     let result = await(getRelevantStreams(true));
-    let streams = results.streams;
-    if (streams === null && result.missingTags) {
+    let streams = result.streams;
+    if (streams === null) {
       return message.channel.send('Twitch did not give tags information, please try again soon');
-    } else if (streams === null) {
+    } else if (streams.length === 0 && result.missingTags) {
       return message.channel.send('Error finding streams @Thurler#7065');
     }
     else if (streams.length === 0) {

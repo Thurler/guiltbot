@@ -7,7 +7,7 @@ const config = require('./config.json');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
-const pollStreamInterval = 5*60*1000;    // Poll streams every 5 minutes
+const pollStreamInterval = 3*60*1000;    // Poll streams every 3 minutes
 const renewStreamInterval = 60*60*1000;  // Update if >1 hour between streams
 
 let twitchApiToken = null;

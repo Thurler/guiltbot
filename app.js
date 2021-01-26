@@ -32,10 +32,10 @@ getGameNameFromId = function(id) {
   return config.twitch.games.find((g)=>g.id===id).name;
 };
 
-checkIsNewStream = function(streamid, userid) {
+checkIsNewStream = function(streamid, userid, force) {
   let data = JSON.parse(fs.readFileSync('./database.json'));
   if (userid in data) {
-    if (data[userid].id === streamid) return false;
+    if (!force && data[userid].id === streamid) return false;
     let now = Date.now();
     if (now - data[userid].date > renewStreamInterval) {
       data[userid].date = now;
@@ -43,7 +43,7 @@ checkIsNewStream = function(streamid, userid) {
       fs.writeFileSync('./database.json', JSON.stringify(data));
       return true;
     }
-    return false;
+    return force;
   }
   data[userid] = {
     date: Date.now(),
@@ -130,8 +130,7 @@ getRelevantStreams = async(function(force) {
       // Filter non-trauma streams
       if (!config.twitch.games.some((g)=>g.id===stream.game_id)) return false;
       // Remove streams that were already posted, unless forced
-      if (force) return true;
-      return checkIsNewStream(stream.id, stream.user_id);
+      return checkIsNewStream(stream.id, stream.user_id, force);
     });
     return {streams: streams, missingTags: missingTags};
   } catch (err) {

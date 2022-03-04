@@ -9,6 +9,7 @@ Discord bot for posting speedrun streams on discord
 - Posts links to the relevant streams on the config Discord channel
 - Provides a `!live` discord command to poll for streams at any time 
 - Provides a cooldown of 1 hour per Twitch user to avoid spam in case of streams going offline
+- Provides a configurable list of blocked users that should not pop up on the bot announcements
 
 # Running the bot
 ---

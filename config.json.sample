@@ -13,6 +13,7 @@
       }
     ]
   },
+  "blockedUsers": ["testuser123"],
   "channel": "Discord channel ID to post to",
   "token": "Discord bot token",
   "prefix": "!"

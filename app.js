@@ -129,6 +129,9 @@ getRelevantStreams = async(function(force) {
       if (!stream.tag_ids.includes(config.twitch.tagId)) return false;
       // Filter non-trauma streams
       if (!config.twitch.games.some((g)=>g.id===stream.game_id)) return false;
+      // Filter blocked user streams
+      let username = stream.user_name;
+      if (config.blockedUsers.includes(username)) return false;
       // Remove streams that were already posted, unless forced
       return checkIsNewStream(stream.id, stream.user_id, force);
     });

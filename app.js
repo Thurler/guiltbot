@@ -67,7 +67,7 @@ getAvatarFromUserId = async(function(userid) {
     body = JSON.parse(body);
     return body.logo;
   } catch (err) {
-    console.log(err);
+    logSomething(err);
     return null;
   }
 });
@@ -139,7 +139,7 @@ getRelevantStreams = async(function(force) {
       await(updateToken());
       return getRelevantStreams(force);
     }
-    console.log(err);
+    logSomething(err);
     return {streams: null, missingTags: false};
   }
 });
@@ -150,10 +150,10 @@ checkStreams = async(function() {
   let result = await(getRelevantStreams(false));
   let streams = result.streams;
   if (!streams || streams.length === 0) {
-    console.log('No streams found.');
+    logSomething('No streams found.');
     return;
   }
-  console.log('Found ' + streams.length.toString() + ' new streams.');
+  logSomething('Found ' + streams.length.toString() + ' new streams.');
   let messages = await(buildStreamsReply(streams));
   messages.forEach((msg)=>{
     channel.send(msg.content, {'embed': msg.embed});
@@ -198,5 +198,8 @@ client.on('message', async((message)=>{
 
 client.login(config.token);
 
-fs.writeFileSync('./database.json', '{}');
+if (!existsSync('./database.json')) {
+  logSomething('Creating database file...');
+  fs.writeFileSync('./database.json', '{}');
+}
 setInterval(checkStreams, pollStreamInterval);

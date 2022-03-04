@@ -201,7 +201,7 @@ client.on('message', async((message)=>{
 
 client.login(config.token);
 
-if (!existsSync('./database.json')) {
+if (!fs.existsSync('./database.json')) {
   logSomething('Creating database file...');
   fs.writeFileSync('./database.json', '{}');
 }

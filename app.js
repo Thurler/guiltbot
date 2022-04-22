@@ -73,7 +73,7 @@ getAvatarFromUserId = async function(userid) {
 buildStreamsReply = async function(streams) {
   let twitchIconUrl = 'https://assets.help.twitch.tv/Glitch_Purple_RGB.png';
   let messages = [];
-  messages = streams.map((stream)=>{
+  messages = streams.map(async (stream)=>{
     let user = stream.user_name;
     let game = getGameNameFromId(stream.game_id);
     let icon = await getAvatarFromUserId(stream.user_id);

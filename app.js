@@ -1,6 +1,4 @@
 const fs = require('fs');
-const async = require('asyncawait/async');
-const await = require('asyncawait/await');
 const request = require('request-promise');
 const config = require('./config.json');
 
@@ -16,17 +14,17 @@ logSomething = function(text) {
   console.log(new Date().toISOString() + ' | ' + text);
 };
 
-updateToken = async(function() {
+updateToken = async function() {
   let url = 'https://id.twitch.tv/oauth2/token?';
   url += 'client_id='+config.twitch.clientId+'&';
   url += 'client_secret='+config.twitch.clientSecret+'&';
   url += 'grant_type=client_credentials';
-  let body = await(request.post({url: url}));
+  let body = await request.post({url: url});
   body = JSON.parse(body);
   if (body.hasOwnProperty('access_token')) {
     twitchApiToken = body.access_token;
   }
-});
+};
 
 getGameNameFromId = function(id) {
   return config.twitch.games.find((g)=>g.id===id).name;
@@ -53,32 +51,32 @@ checkIsNewStream = function(streamid, userid, force) {
   return true;
 };
 
-getAvatarFromUserId = async(function(userid) {
+getAvatarFromUserId = async function(userid) {
   let url = 'https://api.twitch.tv/kraken/users/' + userid;
   let header = {
     'Client-ID': config.twitch.clientId,
     'Accept': 'application/vnd.twitchtv.v5+json'
   };
   try {
-    let body = await(request.get({
+    let body = await request.get({
       url: url,
       headers: header,
-    }));
+    });
     body = JSON.parse(body);
     return body.logo;
   } catch (err) {
     logSomething(err);
     return null;
   }
-});
+};
 
-buildStreamsReply = async(function(streams) {
+buildStreamsReply = async function(streams) {
   let twitchIconUrl = 'https://assets.help.twitch.tv/Glitch_Purple_RGB.png';
   let messages = [];
   messages = streams.map((stream)=>{
     let user = stream.user_name;
     let game = getGameNameFromId(stream.game_id);
-    let icon = await(getAvatarFromUserId(stream.user_id));
+    let icon = await getAvatarFromUserId(stream.user_id);
     let url = 'https://api.twitch.tv/kraken/users/' + stream.user_id;
     let reply = {
       content: user + ' is streaming ' + game + '!',
@@ -101,9 +99,9 @@ buildStreamsReply = async(function(streams) {
     return reply;
   });
   return messages;
-});
+};
 
-getRelevantStreams = async(function(force) {
+getRelevantStreams = async function(force) {
   let url = 'https://api.twitch.tv/helix/streams';
   let header = {
     'Client-ID': config.twitch.clientId,
@@ -112,11 +110,11 @@ getRelevantStreams = async(function(force) {
   let params = { 'game_id': [] };
   config.twitch.games.forEach((game)=>{ params.game_id.push(game.id); });
   try {
-    let body = await(request.get({
+    let body = await request.get({
       url: url,
       headers: header,
       qs: params,
-    }));
+    });
     body = JSON.parse(body);
     let missingTags = false;
     let streams = body.data.filter((stream)=>{
@@ -139,36 +137,36 @@ getRelevantStreams = async(function(force) {
   } catch (err) {
     if (!twitchApiToken && err['name'] === 'StatusCodeError' && err['statusCode'] === 401) {
       logSomething('Getting a new token...');
-      await(updateToken());
+      await updateToken();
       return getRelevantStreams(force);
     }
     logSomething(err);
     return {streams: null, missingTags: false};
   }
-});
+};
 
-checkStreams = async(function() {
+checkStreams = async function() {
   logSomething('Looking for new streams...');
   let channel = client.channels.array().find((c)=>c.id == config.channel);
-  let result = await(getRelevantStreams(false));
+  let result = await getRelevantStreams(false);
   let streams = result.streams;
   if (!streams || streams.length === 0) {
     logSomething('No streams found.');
     return;
   }
   logSomething('Found ' + streams.length.toString() + ' new streams.');
-  let messages = await(buildStreamsReply(streams));
+  let messages = await buildStreamsReply(streams);
   messages.forEach((msg)=>{
     channel.send(msg.content, {'embed': msg.embed});
   });
-});
+};
 
 client.on('ready', ()=>{
   client.user.setActivity('with GUILT'); // owo
   checkStreams();
 });
 
-client.on('message', async((message)=>{
+client.on('message', async (message)=>{
   if (message.author.bot) return; // Ignore other bots
   if (message.content.indexOf('!') !== 0) return; // Ignore no prefix
 
@@ -181,7 +179,7 @@ client.on('message', async((message)=>{
   if (command === 'live') {
     // Display live streams
     logSomething('Live command received...');
-    let result = await(getRelevantStreams(true));
+    let result = await getRelevantStreams(true);
     let streams = result.streams;
     if (streams === null) {
       return message.channel.send('Error finding streams');
@@ -192,12 +190,12 @@ client.on('message', async((message)=>{
     else if (streams.length === 0) {
       return message.channel.send('No relevant streams found');
     }
-    let messages = await(buildStreamsReply(streams));
+    let messages = await buildStreamsReply(streams);
     messages.forEach((msg)=>{
       message.channel.send(msg.content, {'embed': msg.embed});
     });
   }
-}));
+});
 
 client.login(config.token);
 

@@ -60,6 +60,25 @@ const getAvatarFromUserId = async function(userid) {
   }
 };
 
+const checkSpeedrunTag = async function(userid) {
+  let url = 'https://api.twitch.tv/helix/channels?broadcaster_id=' + userid;
+  let header = {
+    'Client-ID': config.twitch.clientId,
+    'Authorization': 'Bearer ' + twitchApiToken,
+  };
+  try {
+    let body = await request.get({
+      url: url,
+      headers: header,
+    });
+    body = JSON.parse(body);
+    return body.data[0].tags.some((tag) => tag.match(/speedrun/i));
+  } catch (err) {
+    logSomething(err);
+    return false;
+  }
+};
+
 const buildStreamsReply = async function(streams) {
   let twitchIconUrl = 'https://raw.githubusercontent.com/Thurler/guiltbot/master/twitch.png';
   let messages = [];
@@ -112,7 +131,7 @@ const getRelevantStreams = async function(force) {
       // Remove streams that were already posted, unless forced
       if (!force && !checkIsNewStream(stream.id, stream.user_id)) continue;
       // Lastly, check if streamer set "speedrun" as a tag
-      // if (!(await checkSpeedrunTag(stream.user_id))) continue;
+      if (!(await checkSpeedrunTag(stream.user_id))) continue;
       // Properly update database if we made it this far
       updateNewStream(stream.id, stream.user_id);
       streams.push(stream);

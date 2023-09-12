@@ -1,6 +1,6 @@
 {
   "name": "guiltbot",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Discord bot filled with GUILT",
   "main": "app.js",
   "scripts": {

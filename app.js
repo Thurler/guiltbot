@@ -29,6 +29,7 @@ const updateToken = async function() {
 const checkIsNewStream = function(streamid, userid) {
   let data = JSON.parse(fs.readFileSync('./database.json'));
   if (!(userid in data)) return true;
+  if (data[userid].id === streamid) return false;
   return (Date.now() - data[userid].date > renewStreamInterval);
 };
 

@@ -53,7 +53,7 @@ const getAvatarFromUserId = async function(userid) {
       headers: header,
     });
     body = JSON.parse(body);
-    return body.profile_image_url;
+    return body.data[0].profile_image_url;
   } catch (err) {
     logSomething(err);
     return null;

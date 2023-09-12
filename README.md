@@ -13,7 +13,7 @@ Discord bot for posting speedrun streams on discord
 
 # Running the bot
 ---
-- You will need Node.js v6+
+- You will need Node.js v16+ (other versions not tested)
 - You will need a Twitch application Client ID and a Discord Bot token.
 
 Rename config.json.sample to config.json and fill it as needed, then run:

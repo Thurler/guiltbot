@@ -85,17 +85,18 @@ const buildStreamsReply = async function(streams) {
   let messages = [];
   for (const stream of streams) {
     let user = stream.user_name;
+    let streamName = stream.user_login;
     let game = config.twitch.games.find((g)=>g.id===stream.game_id).name;
     let reply = {
       content: `${user} is streaming ${game}!`,
       embed: {
         title: stream.title,
-        url: 'https://twitch.tv/' + user,
+        url: 'https://twitch.tv/' + streamName,
         color: 696969,
         timestamp: Date.now(),
         author: {
           name: user,
-          url: 'https://twitch.tv/' + user,
+          url: 'https://twitch.tv/' + streamName,
           icon_url: twitchIconUrl,
         },
       },

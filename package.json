@@ -4,7 +4,9 @@
   "description": "Discord bot filled with GUILT",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "startW": "node app.js > app.log",
+    "startL": "node app.js > app.log &"
   },
   "dependencies": {
     "discord.js": "^11.5.1",

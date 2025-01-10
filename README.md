@@ -19,5 +19,11 @@ Discord bot for posting speedrun streams on discord
 Rename config.json.sample to config.json and fill it as needed, then run:
 ```
 npm install
-node app.js > app.log &
+
+For Linux users:
+npm run startL
+
+For Windows users:
+npm run startW
+
 ```

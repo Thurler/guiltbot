@@ -73,7 +73,7 @@ const checkSpeedrunTag = async function(userid) {
       headers: header,
     });
     body = JSON.parse(body);
-    return body.data[0].tags.some((tag) => tag.match(/speedrun/i));
+    return body.data[0].tags.some((tag) => tag.toLowerCase() === "speedrun");
   } catch (err) {
     logSomething(err);
     return false;

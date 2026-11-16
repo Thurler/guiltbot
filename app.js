@@ -24,6 +24,10 @@ const logSomething = function(text) {
 
 const updateToken = async function() {
   try {
+    const url = new URL('https://id.twitch.tv/oauth2/token');
+    url.searchParams.append('client_id', config.twitch.clientId);
+    url.searchParams.append('client_secret', config.twitch.clientSecret);
+    url.searchParams.append('grant_type', 'client_credentials');
     const res = await fetch(url, { method: 'POST' });
     const body = await res.json();
     if (body.access_token) {
@@ -122,6 +126,7 @@ const getRelevantStreams = async function(force) {
   config.twitch.games.forEach(
     (game) => url.searchParams.append('game_id', game.id),
   );
+
   const headers = {
     'Client-ID': config.twitch.clientId,
     'Authorization': `Bearer ${twitchApiToken}`,

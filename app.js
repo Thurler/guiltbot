@@ -1,12 +1,20 @@
 const fs = require('fs');
-const request = require('request-promise');
 const config = require('./config.json');
 
-const Discord = require('discord.js');
-const client = new Discord.Client();
+const {
+  Client, GatewayIntentBits, EmbedBuilder, Events,
+} = require('discord.js');
 
-const pollStreamInterval = 2*60*1000;    // Poll streams every 2 minutes
-const renewStreamInterval = 60*60*1000;  // Update if >1 hour between streams
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
+
+const pollStreamInterval = 2 * 60 * 1000;   // Poll streams every 2 minutes
+const renewStreamInterval = 60 * 60 * 1000; // Update if >1 hour between streams
 
 let twitchApiToken = null;
 
@@ -15,26 +23,26 @@ const logSomething = function(text) {
 };
 
 const updateToken = async function() {
-  let url = 'https://id.twitch.tv/oauth2/token?';
-  url += 'client_id='+config.twitch.clientId+'&';
-  url += 'client_secret='+config.twitch.clientSecret+'&';
-  url += 'grant_type=client_credentials';
-  let body = await request.post({url: url});
-  body = JSON.parse(body);
-  if (body.hasOwnProperty('access_token')) {
-    twitchApiToken = body.access_token;
+  try {
+    const res = await fetch(url, { method: 'POST' });
+    const body = await res.json();
+    if (body.access_token) {
+      twitchApiToken = body.access_token;
+    }
+  } catch (err) {
+    logSomething('Failed to update Twitch token: ' + err);
   }
 };
 
 const checkIsNewStream = function(streamid, userid) {
-  let data = JSON.parse(fs.readFileSync('./database.json'));
+  const data = JSON.parse(fs.readFileSync('./database.json'));
   if (!(userid in data)) return true;
   if (data[userid].id === streamid) return false;
   return (Date.now() - data[userid].date > renewStreamInterval);
 };
 
 const updateNewStream = function(streamid, userid) {
-  let data = JSON.parse(fs.readFileSync('./database.json'));
+  const data = JSON.parse(fs.readFileSync('./database.json'));
   data[userid] = {
     date: Date.now(),
     id: streamid,
@@ -43,18 +51,15 @@ const updateNewStream = function(streamid, userid) {
 };
 
 const getAvatarFromUserId = async function(userid) {
-  let url = 'https://api.twitch.tv/helix/users?id=' + userid;
-  let header = {
+  const url = `https://api.twitch.tv/helix/users?id=${userid}`;
+  const headers = {
     'Client-ID': config.twitch.clientId,
-    'Authorization': 'Bearer ' + twitchApiToken,
+    'Authorization': `Bearer ${twitchApiToken}`,
   };
   try {
-    let body = await request.get({
-      url: url,
-      headers: header,
-    });
-    body = JSON.parse(body);
-    return body.data[0].profile_image_url;
+    const res = await fetch(url, { headers });
+    const body = await res.json();
+    return body.data?.[0]?.profile_image_url || null;
   } catch (err) {
     logSomething(err);
     return null;
@@ -62,18 +67,17 @@ const getAvatarFromUserId = async function(userid) {
 };
 
 const checkSpeedrunTag = async function(userid) {
-  let url = 'https://api.twitch.tv/helix/channels?broadcaster_id=' + userid;
-  let header = {
+  const url = `https://api.twitch.tv/helix/channels?broadcaster_id=${userid}`;
+  const headers = {
     'Client-ID': config.twitch.clientId,
-    'Authorization': 'Bearer ' + twitchApiToken,
+    'Authorization': `Bearer ${twitchApiToken}`,
   };
   try {
-    let body = await request.get({
-      url: url,
-      headers: header,
-    });
-    body = JSON.parse(body);
-    return body.data[0].tags.some((tag) => tag.toLowerCase() === "speedrun");
+    const res = await fetch(url, { headers });
+    const body = await res.json();
+    return body.data?.[0]?.tags?.some(
+      (tag) => tag.toLowerCase() === 'speedrun',
+    ) ?? false;
   } catch (err) {
     logSomething(err);
     return false;
@@ -81,53 +85,62 @@ const checkSpeedrunTag = async function(userid) {
 };
 
 const buildStreamsReply = async function(streams) {
-  let twitchIconUrl = 'https://raw.githubusercontent.com/Thurler/guiltbot/master/twitch.png';
-  let messages = [];
+  const twitchIconUrl =
+      'https://raw.githubusercontent.com/Thurler/guiltbot/master/twitch.png';
+  const messages = [];
   for (const stream of streams) {
-    let user = stream.user_name;
-    let streamName = stream.user_login;
-    let game = config.twitch.games.find((g)=>g.id===stream.game_id).name;
-    let reply = {
-      content: `${user} is streaming ${game}!`,
-      embed: {
-        title: stream.title,
-        url: 'https://twitch.tv/' + streamName,
-        color: 696969,
-        timestamp: Date.now(),
-        author: {
-          name: user,
-          url: 'https://twitch.tv/' + streamName,
-          icon_url: twitchIconUrl,
-        },
-      },
-    };
-    let icon = await getAvatarFromUserId(stream.user_id);
+    const user = stream.user_name;
+    const streamName = stream.user_login;
+    const game = config.twitch.games.find((g)=>g.id===stream.game_id).name;
+    const embed = new EmbedBuilder()
+      .setTitle(stream.title)
+      .setURL(`https://twitch.tv/${streamName}`)
+      .setColor(0x696969)
+      .setTimestamp()
+      .setAuthor({
+        name: user,
+        url: `https://twitch.tv/${streamName}`,
+        iconURL: twitchIconUrl,
+      });
+    const icon = await getAvatarFromUserId(stream.user_id);
     if (icon) {
-      reply.embed.thumbnail = {url: icon};
+      embed.setThumbnail(icon);
     }
-    messages.push(reply);
+    messages.push({
+      content: `${user} is streaming ${game}!`,
+      embeds: [embed],
+    });
   }
   return messages;
 };
 
 const getRelevantStreams = async function(force) {
-  let url = 'https://api.twitch.tv/helix/streams';
-  let header = {
+  if (!twitchApiToken) {
+    await updateToken();
+  }
+  const url = new URL('https://api.twitch.tv/helix/streams');
+  config.twitch.games.forEach(
+    (game) => url.searchParams.append('game_id', game.id),
+  );
+  const headers = {
     'Client-ID': config.twitch.clientId,
-    'Authorization': 'Bearer ' + twitchApiToken,
+    'Authorization': `Bearer ${twitchApiToken}`,
   };
-  let params = {'game_id': config.twitch.games.map((game) => game.id)};
   try {
-    let body = await request.get({
-      url: url,
-      headers: header,
-      qs: params,
-    });
-    body = JSON.parse(body);
-    let streams = [];
-    for (const stream of body.data) {
+    const res = await fetch(url, { headers });
+
+    if (res.status === 401) {
+      logSomething('Getting a new Twitch API token...');
+      await updateToken();
+      return getRelevantStreams(force);
+    }
+
+    const body = await res.json();
+    const streams = [];
+
+    for (const stream of body.data || []) {
       // Filter streams from different games
-      if (!config.twitch.games.some((g)=>g.id===stream.game_id)) continue;
+      if (!config.twitch.games.some((g) => g.id === stream.game_id)) continue;
       // Filter blocked user streams
       if (config.blockedUsers.includes(stream.user_name)) continue;
       // Remove streams that were already posted, unless forced
@@ -138,63 +151,69 @@ const getRelevantStreams = async function(force) {
       updateNewStream(stream.id, stream.user_id);
       streams.push(stream);
     }
-    return {streams: streams};
+    return { streams };
   } catch (err) {
-    if (err['name'] === 'StatusCodeError' && err['statusCode'] === 401) {
-      logSomething('Getting a new Twitch API token...');
-      await updateToken();
-      return getRelevantStreams(force);
-    }
     logSomething(err);
-    return {streams: null};
+    return { streams: null };
   }
 };
 
 const checkStreams = async function() {
   logSomething('Looking for new streams...');
-  let channel = client.channels.array().find((c)=>c.id == config.channel);
-  let result = await getRelevantStreams(false);
-  let streams = result.streams;
+  const channel = client.channels.cache.get(config.channel);
+  if (!channel) {
+    logSomething('Configured channel not found in cache.');
+    return;
+  }
+  const result = await getRelevantStreams(false);
+  const streams = result.streams;
   if (!streams || streams.length === 0) {
     logSomething('No streams found.');
     return;
   }
-  logSomething('Found ' + streams.length.toString() + ' new streams.');
-  let messages = await buildStreamsReply(streams);
-  messages.forEach((msg)=>{
-    channel.send(msg.content, {'embed': msg.embed});
-  });
+  logSomething(`Found ${streams.length} new streams.`);
+  const messages = await buildStreamsReply(streams);
+  for (const msg of messages) {
+    await channel.send(msg);
+  }
 };
 
-client.on('ready', ()=>{
-  client.user.setActivity(config.discordActivity);
+client.once(Events.ClientReady, () => {
+  logSomething(`Logged in as ${client.user.tag}`);
+  if (config.discordActivity) {
+    client.user.setActivity(config.discordActivity);
+  }
   checkStreams();
+  setInterval(checkStreams, pollStreamInterval);
 });
 
-client.on('message', async (message)=>{
-  if (message.author.bot) return; // Ignore other bots
-  if (message.content.indexOf('!') !== 0) return; // Ignore no prefix
-
+client.on(Events.MessageCreate, async (message) => {
+  // Ignore other bots
+  if (message.author.bot) return;
+  // Ignore no prefix
+  if (!message.content.startsWith(config.prefix || '!')) return;
   // Post only in #streams channel
   if (message.channel.id !== config.channel) return;
 
-  const args = message.content.slice(config.prefix.length).trim().split(/ !/g);
+  const prefix = config.prefix || '!';
+  const args = message.content.slice(prefix.length).trim().split(/\s+/);
   const command = args.shift().toLowerCase();
 
   if (command === 'live') {
-    // Display live streams
     logSomething('Live command received...');
-    let result = await getRelevantStreams(true);
-    let streams = result.streams;
+    const result = await getRelevantStreams(true);
+    const streams = result.streams;
+
     if (streams === null) {
       return message.channel.send('Error finding streams');
     } else if (streams.length === 0) {
       return message.channel.send('No relevant streams found');
     }
-    let messages = await buildStreamsReply(streams);
-    messages.forEach((msg)=>{
-      message.channel.send(msg.content, {'embed': msg.embed});
-    });
+
+    const messages = await buildStreamsReply(streams);
+    for (const msg of messages) {
+      await message.channel.send(msg);
+    }
   }
 });
 
@@ -204,4 +223,3 @@ if (!fs.existsSync('./database.json')) {
 }
 
 client.login(config.token);
-setInterval(checkStreams, pollStreamInterval);

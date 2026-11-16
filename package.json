@@ -9,7 +9,7 @@
     "startL": "node app.js > app.log &"
   },
   "dependencies": {
-    "discord.js": "^11.5.1",
+    "discord.js": "^14.28.1",
     "request": "^2.88.0",
     "request-promise": "^4.2.4"
   },
